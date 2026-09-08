@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Foto-Bingo</title>
+<style>
+  :root {
+    --bg: #f3f0e8;
+    --card: #fff;
+    --text: #26342d;
+    --muted: #68736d;
+    --accent: #32684d;
+    --accent-dark: #214936;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--text);
+    background: var(--bg);
+  }
+  .page {
+    width: min(1200px, 95vw);
+    margin: auto;
+    padding: 32px 0 44px;
+  }
+  header { text-align: center; margin-bottom: 24px; }
+  h1 {
+    margin: 0 0 7px;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    letter-spacing: -.04em;
+  }
+  .intro {
+    margin: 0 auto;
+    max-width: 680px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .bingo {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 10px;
+    background: var(--accent-dark);
+    padding: 10px;
+    border-radius: 18px;
+    box-shadow: 0 18px 45px rgba(0,0,0,.12);
+  }
+  .cell {
+    position: relative;
+    aspect-ratio: 1.35 / 1;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    background: var(--card);
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .cell:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(0,0,0,.15); }
+  .cell input { display: none; }
+  .placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 12px;
+    text-align: center;
+  }
+  .camera { font-size: clamp(1.5rem, 3vw, 2.2rem); margin-bottom: 7px; }
+  .task {
+    font-size: clamp(.72rem, 1.35vw, .98rem);
+    font-weight: 750;
+    line-height: 1.25;
+  }
+  .number {
+    position: absolute;
+    top: 7px;
+    left: 8px;
+    color: #8a948e;
+    font-size: .72rem;
+    font-weight: 800;
+    z-index: 2;
+  }
+  .photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .cell.done .photo { display: block; }
+  .cell.done::after {
+    content: "✓";
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 29px;
+    height: 29px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: white;
+    color: var(--accent);
+    font-weight: 900;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  }
+  .cell.done .placeholder {
+    inset: auto 0 0;
+    padding: 9px;
+    background: linear-gradient(transparent, rgba(0,0,0,.78));
+    color: white;
+    justify-content: flex-end;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .cell.done .camera, .cell.done .number { display: none; }
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 22px;
+  }
+  button {
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 21px;
+    font: inherit;
+    font-weight: 750;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+  }
+  button:hover { background: var(--accent-dark); }
+  .progress {
+    margin-top: 16px;
+    text-align: center;
+    color: var(--muted);
+    font-weight: 650;
+  }
+  .bingo-message {
+    display: none;
+    margin: 18px auto 0;
+    width: fit-content;
+    padding: 13px 22px;
+    border-radius: 14px;
+    background: white;
+    font-size: 1.2rem;
+    font-weight: 850;
+    box-shadow: 0 8px 25px rgba(0,0,0,.1);
+  }
+  .bingo-message.show { display: block; }
+  @media (max-width: 700px) {
+    .page { width: 97vw; padding-top: 22px; }
+    .bingo { gap: 5px; padding: 5px; border-radius: 12px; }
+    .cell { border-radius: 7px; aspect-ratio: 1.12 / 1; }
+    .placeholder { padding: 5px; }
+    .camera { margin-bottom: 3px; }
+    .cell.done::after { width: 22px; height: 22px; top: 4px; right: 4px; font-size: .8rem; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>📸 Foto-Bingo</h1>
+    <p class="intro">Fotografiere die gesuchten Dinge und fülle damit dein Bingo-Feld. Tippe auf ein Feld, um ein Foto aufzunehmen oder auszuwählen.</p>
+  </header>
+
+  <section class="bingo" id="bingo" aria-label="4 mal 5 Bingo-Raster"></section>
+
+  <div class="progress" id="progress">0 von 20 Feldern ausgefüllt</div>
+  <div class="bingo-message" id="bingoMessage">🎉 BINGO! Eine Reihe ist vollständig.</div>
+
+  <div class="controls">
+    <button id="reset" type="button">Bingo zurücksetzen</button>
+  </div>
+</main>
+
+<script>
+const tasks = [
+  "Fotografiere einen Vogel",
+  "Fotografiere Plastikmüll",
+  "Fotografiere ein Eichenblatt",
+  "Fotografiere etwas Violettes",
+  "Fotografiere das Gesicht eines fremden Wanderers",
+  "Fotografiere eine gelbe Funktionsjacke",
+  "Fotografiere eine Schnecke",
+  "Fotografiere einen Regenwurm auf deiner Hand",
+  "Fotografiere ein Baumloch",
+  "Fotografiere ein Hinweisschild für die Sparrenburg",
+  "Fotografiere einen Pilz",
+  "Fotografiere Pfotenabdrücke",
+  "Fotografiere 3 übereinander gestapelte Steine",
+  "Fotografiere eine Feder",
+  "Fotografiere einen Baumstapel",
+  "Fotografiere wilde Beeren",
+  "Fotografiere einen Tannenzapfen",
+  "Fotografiere fließendes Gewässer",
+  "Fotografiere eine Brücke",
+  "Fotografiere eine gelbe Blüte"
+];
+
+const bingo = document.getElementById("bingo");
+const progress = document.getElementById("progress");
+const bingoMessage = document.getElementById("bingoMessage");
+
+function buildBoard() {
+  bingo.innerHTML = "";
+  tasks.forEach((task, index) => {
+    const cell = document.createElement("label");
+    cell.className = "cell";
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.capture = "environment";
+
+    const img = document.createElement("img");
+    img.className = "photo";
+    img.alt = task;
+
+    const number = document.createElement("div");
+    number.className = "number";
+    number.textContent = index + 1;
+
+    const placeholder = document.createElement("div");
+    placeholder.className = "placeholder";
+    placeholder.innerHTML = `<div class="camera">📷</div><div class="task">${task}</div>`;
+
+    cell.append(input, img, number, placeholder);
+    bingo.appendChild(cell);
+
+    input.addEventListener("change", () => {
+      const file = input.files[0];
+      if (!file) return;
+      if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+      const url = URL.createObjectURL(file);
+      img.dataset.url = url;
+      img.src = url;
+      cell.classList.add("done");
+      updateProgress();
+      checkBingo();
+    });
+  });
+}
+
+function updateProgress() {
+  const done = document.querySelectorAll(".cell.done").length;
+  progress.textContent = `${done} von 20 Feldern ausgefüllt`;
+}
+
+function checkBingo() {
+  const cells = [...document.querySelectorAll(".cell")];
+  const lines = [];
+
+  // 5 horizontale Reihen mit jeweils 4 Feldern
+  for (let row = 0; row < 5; row++) {
+    lines.push([0,1,2,3].map(col => row * 4 + col));
+  }
+
+  // 4 vertikale Reihen mit jeweils 5 Feldern
+  for (let col = 0; col < 4; col++) {
+    lines.push([0,1,2,3,4].map(row => row * 4 + col));
+  }
+
+  // Bei 4x5 gibt es keine "klassischen" diagonalen 5er-Reihen.
+  const hasBingo = lines.some(line =>
+    line.every(index => cells[index].classList.contains("done"))
+  );
+
+  bingoMessage.classList.toggle("show", hasBingo);
+}
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (!confirm("Möchtest du das Bingo wirklich zurücksetzen?")) return;
+  buildBoard();
+  updateProgress();
+  bingoMessage.classList.remove("show");
+});
+
+buildBoard();
+</script>
+</body>
+</html>
